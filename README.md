@@ -584,3 +584,55 @@ Spring MVC를 이용해서 방명록 만들기
             </body>
             </html>
             ~~~
+3. RestController 작성
+    * pom.xml에 Jackson 라이브러리를 추가하면 @EnableWebMvc를 통해서 자동으로 JSON 메세지 컨버터를 등록한다.
+    * GuestbookAPIController.class 작성
+        ~~~
+        @RestController
+        @RequestMapping(path = "/guestbooks")
+        public class GuestbookAPIController {
+            @Autowired
+            GuestbookService guestbookService;
+        
+            @GetMapping
+            public Map<String, Object> list(@RequestParam(name = "start", required = false, defaultValue = "0") int start) {
+                List<Guestbook> list = guestbookService.getGuestBooks(start);
+        
+                int count = guestbookService.getCount();
+                int pageCount = count / GuestbookService.LIMIT;
+                if (count % GuestbookService.LIMIT > 0) {
+                    pageCount++;
+                }
+        
+                List<Integer> pageStartList = new ArrayList<>();
+                for (int i = 0; i < pageCount; i++) {
+                    pageStartList.add(i * GuestbookService.LIMIT);
+                }
+        
+                Map<String, Object> map = new HashMap<>();
+                map.put("list", list);
+                map.put("count", count);
+                map.put("pageStartList", pageStartList);
+        
+                return map;
+            }
+        
+            @PostMapping
+            public Guestbook write(@RequestBody Guestbook guestbook, HttpServletRequest request) {
+                String clientIp = request.getRemoteAddr();
+                // id가 입력된 guestbook이 반환 된다.
+                Guestbook resultGuestbook = guestbookService.addGuestbook(guestbook, clientIp);
+                return resultGuestbook;
+            }
+        
+            @DeleteMapping("/{id}")
+            public Map<String, String> delete(@PathVariable(name = "id") Long id,
+                                              HttpServletRequest request) {
+                String clientIp = request.getRemoteAddr();
+        
+                int deleteCount = guestbookService.deleteGuestbook(id, clientIp);
+                return Collections.singletonMap("success", deleteCount > 0 ? "true" : "false");
+            }
+        }
+        ~~~
+    * Postman을 통해 API 요청 결과값 확인
